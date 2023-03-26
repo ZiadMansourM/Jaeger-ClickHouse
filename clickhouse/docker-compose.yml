@@ -1,26 +1,42 @@
 version: '3'
-
 services:
-  clickhouse:
-    image: yandex/clickhouse-server
-    container_name: clickhouse
-    ports:
-      - "8123:8123"
-      - "9000:9000"
-
+  build-binaries:
+    build:
+      context: clickhouse
+      args:
+        GOOS: linux
+        GOARCH: arm64
+    volumes:
+      - ./output:/app/output
   jaeger:
-    image: jaegertracing/all-in-one
+    image: jaegertracing/all-in-one:1.32.0
     container_name: jaeger
     ports:
       - "16686:16686"
+      - "14250:14250"
+      - "14268:14268"
       - "6831:6831/udp"
     environment:
-      COLLECTOR_ZIPKIN_HTTP_PORT: 9411
-      STORAGE_TYPE: grpc-plugin
-      STORAGE_PLUGIN_BINARY: /go/bin/clickhouse
-      STORAGE_PLUGIN_CONFIGURATION: '{"dsn":"tcp://clickhouse:9000","database":"jaeger","table":"jaeger"}'
-      SPAN_STORAGE_TYPE: grpc-plugin
-      SPAN_STORAGE_PLUGIN_BINARY: /go/bin/clickhouse
-      SPAN_STORAGE_PLUGIN_CONFIGURATION: '{"dsn":"tcp://clickhouse:9000","database":"jaeger","table":"jaeger"}'
-    depends_on:
+      - JAEGER_DISABLED=false
+      - SPAN_STORAGE_TYPE=grpc-plugin
+    volumes:
+      - "./output:/data"
+    command: >
+      --query.ui-config=/data/jaeger-ui.json
+      --grpc-storage-plugin.binary=/data/jaeger-clickhouse-linux-arm64
+      --grpc-storage-plugin.configuration-file=/data/config.yaml
+      --grpc-storage-plugin.log-level=debug
+    links:
       - clickhouse
+    user: "501"
+    depends_on:
+      - build-binaries
+  clickhouse:
+    image: clickhouse/clickhouse-server:22
+    container_name: some-clickhouse-server
+    ports:
+      - "9000:9000"
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144

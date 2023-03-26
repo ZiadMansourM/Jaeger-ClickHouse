@@ -1,25 +1,52 @@
-# Jaeger with ClickHouse Storage Plugin - [ref](https://github.com/jaegertracing/jaeger-clickhouse).
+```console
+ziadh@Ziads-MacBook-Air jaeger-clickhouse % docker run --rm -p 9000:9000 --name some-clickhouse-server --ulimit nofile=262144:262144 -d clickhouse/clickhouse-server:22
+GOOS=linux make build run
+make run-hotrod
+```
 
-This docker-compose.yml file defines two services, clickhouse and jaeger.
+```yml
+clickhouse:
+    image: clickhouse/clickhouse-server:22
+    container_name: some-clickhouse-server
+    ports:
+      - "9000:9000"
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+```
 
-The clickhouse service uses the official ClickHouse image and maps the container ports `8123` and `9000` to the host. 
-- Port 8123 is the default ClickHouse `client port`. 
-- Port 9000 is the default ClickHouse `server port`.
+## Building
+    
+```console
+ziadh@Ziads-MacBook-Air jaeger-clickhouse % GOOS=linux make build-all-platforms
+GOOS=linux GOARCH=amd64 /Library/Developer/CommandLineTools/usr/bin/make build
+CGO_ENABLED=0 installsuffix=cgo go build -trimpath -o ./output-files/jaeger-clickhouse-linux-amd64 ./cmd/jaeger-clickhouse/main.go
+GOOS=linux GOARCH=arm64 /Library/Developer/CommandLineTools/usr/bin/make build
+CGO_ENABLED=0 installsuffix=cgo go build -trimpath -o ./output-files/jaeger-clickhouse-linux-arm64 ./cmd/jaeger-clickhouse/main.go
+GOOS=darwin GOARCH=amd64 /Library/Developer/CommandLineTools/usr/bin/make build
+CGO_ENABLED=0 installsuffix=cgo go build -trimpath -o ./output-files/jaeger-clickhouse-darwin-amd64 ./cmd/jaeger-clickhouse/main.go
+GOOS=darwin GOARCH=arm64 /Library/Developer/CommandLineTools/usr/bin/make build
+CGO_ENABLED=0 installsuffix=cgo go build -trimpath -o ./output-files/jaeger-clickhouse-darwin-arm64 ./cmd/jaeger-clickhouse/main.go
+```
 
-The jaeger service uses the official `Jaeger all-in-one` image and maps the container ports `16686` and `6831/udp` to the host. 
-- Port 16686 is the default `Jaeger UI port`. 
-- Port 6831/udp is the default `Jaeger agent port`.
+```console
+ziadh@Ziads-MacBook-Air jaeger-clickhouse % ls output-files 
+jaeger-clickhouse-darwin-amd64	jaeger-clickhouse-linux-amd64
+jaeger-clickhouse-darwin-arm64	jaeger-clickhouse-linux-arm64
+```
 
-The jaeger service also sets several environment variables to configure Jaeger to use ClickHouse as the storage backend:
-
-- `STORAGE_TYPE` is set to grpc-plugin to enable the ClickHouse storage plugin.
-- `STORAGE_PLUGIN_BINARY` is set to /go/bin/clickhouse to specify the path to the ClickHouse storage plugin binary.
-- `STORAGE_PLUGIN_CONFIGURATION` is set to specify the connection details to the ClickHouse server and the table to use for storing spans.
-- `SPAN_STORAGE_TYPE` is set to grpc-plugin to enable the ClickHouse storage plugin for spans.
-- `SPAN_STORAGE_PLUGIN_BINARY` is set to /go/bin/clickhouse to specify the path to the ClickHouse storage plugin binary for spans.
-- `SPAN_STORAGE_PLUGIN_CONFIGURATION` is set to specify the connection details to the ClickHouse server and the table to use for storing spans.
-
-The `depends_on` option is used to ensure that the clickhouse service is started before the jaeger service.
-
-Once you have saved this docker-compose.yml file, you can start the services by running the command
-> docker-compose up.
+```console
+docker run --rm --name jaeger 
+-e JAEGER_DISABLED=false 
+--link some-clickhouse-server 
+-it -u 501 
+-p16686:16686 -p14250:14250 -p14268:14268 -p6831:6831/udp 
+-v "/Users/ziadh/Desktop/repos/sk_sre/jaeger/clickhouse-example/jaeger-clickhouse:/data" 
+-e SPAN_STORAGE_TYPE=grpc-plugin 
+jaegertracing/all-in-one:1.32.0 
+--query.ui-config=/data/jaeger-ui.json 
+--grpc-storage-plugin.binary=/data/jaeger-clickhouse-linux-arm64 
+--grpc-storage-plugin.configuration-file=/data/config.yaml 
+--grpc-storage-plugin.log-level=debug
+```
