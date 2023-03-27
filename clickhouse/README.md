@@ -1,3 +1,5 @@
+# 🤔 Analyizing what is happening in [link](https://github.com/jaegertracing/jaeger-clickhouse)
+
 ```console
 ziadh@Ziads-MacBook-Air jaeger-clickhouse % docker run --rm -p 9000:9000 --name some-clickhouse-server --ulimit nofile=262144:262144 -d clickhouse/clickhouse-server:22
 GOOS=linux make build run
@@ -16,7 +18,7 @@ clickhouse:
         hard: 262144
 ```
 
-## Building
+### Building
     
 ```console
 ziadh@Ziads-MacBook-Air jaeger-clickhouse % GOOS=linux make build-all-platforms
@@ -51,7 +53,77 @@ jaegertracing/all-in-one:1.32.0
 --grpc-storage-plugin.log-level=debug
 ```
 
+# 🔧 Setup
+
 ```console
 GOOS=linux GOARCH=arm64 go build -o jaeger-clickhouse-linux-arm64 main.go
 GOOS=darwin GOARCH=arm64 go build -o jaeger-clickhouse-darwin-arm64 main.go
+```
+
+```console
+ziadh@Ziads-MacBook-Air clickhouse % tree 
+.
+├── README.md
+├── clickhouse
+│   ├── Dockerfile
+│   ├── go.mod
+│   ├── go.sum
+│   ├── jaeger-clickhouse-darwin-arm64
+│   ├── jaeger-clickhouse-linux-arm64
+│   └── main.go
+├── docker-compose.yml
+└── output
+    ├── config.yaml
+    ├── jaeger-clickhouse-linux-arm64
+    └── jaeger-ui.json
+
+2 directories, 11 files
+```
+
+```.yml
+version: '3'
+
+services:
+  # build-binaries:
+  #   build:
+  #     context: .
+  #     dockerfile: ./clickhouse/Dockerfile
+  #     args:
+  #       GOOS: linux
+  #       GOARCH: arm64
+  #   volumes:
+  #     - output:/app/output
+  jaeger:
+    image: jaegertracing/all-in-one:1.32.0
+    container_name: jaeger
+    restart: always
+    ports:
+      - "16686:16686"
+      - "14250:14250"
+      - "14268:14268"
+      - "6831:6831/udp"
+    environment:
+      - JAEGER_DISABLED=false
+      - SPAN_STORAGE_TYPE=grpc-plugin
+    volumes:
+      - "./output:/data"
+    command: >
+      --query.ui-config=/data/jaeger-ui.json
+      --grpc-storage-plugin.binary=/data/jaeger-clickhouse-linux-arm64
+      --grpc-storage-plugin.configuration-file=/data/config.yaml
+      --grpc-storage-plugin.log-level=debug
+    links:
+      - clickhouse
+    user: "501"
+    # depends_on:
+    #   - build-binaries
+  clickhouse:
+    image: clickhouse/clickhouse-server:22
+    container_name: some-clickhouse-server
+    ports:
+      - "9000:9000"
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
 ```
