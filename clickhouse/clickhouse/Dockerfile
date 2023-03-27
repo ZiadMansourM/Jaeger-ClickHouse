@@ -1,11 +1,15 @@
-FROM golang:1.17-alpine
+FROM golang:1.20-alpine
 
-WORKDIR /app
+VOLUME /app/output
+WORKDIR /app/output
 
-COPY go.mod go.sum ./
+COPY ./clickhouse/go.mod .
+COPY ./clickhouse/go.sum .
 RUN go mod download
-COPY main.go .
+COPY ./clickhouse/main.go .
 
 ARG GOOS
 ARG GOARCH
-RUN GOOS=${GOOS} GOARCH=${GOARCH} go build -o /app/output/jaeger-clickhouse-${GOOS}-${GOARCH} main.go
+RUN GOOS=${GOOS} GOARCH=${GOARCH} go build -o jaeger-clickhouse-file main.go
+
+RUN touch myfile.txt

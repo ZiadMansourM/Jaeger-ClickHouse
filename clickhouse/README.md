@@ -50,3 +50,8 @@ jaegertracing/all-in-one:1.32.0
 --grpc-storage-plugin.configuration-file=/data/config.yaml 
 --grpc-storage-plugin.log-level=debug
 ```
+
+```console
+GOOS=linux GOARCH=arm64 go build -o jaeger-clickhouse-linux-arm64 main.go
+GOOS=darwin GOARCH=arm64 go build -o jaeger-clickhouse-darwin-arm64 main.go
+```

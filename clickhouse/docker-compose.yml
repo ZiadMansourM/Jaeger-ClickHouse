@@ -1,13 +1,15 @@
 version: '3'
+
 services:
-  build-binaries:
-    build:
-      context: clickhouse
-      args:
-        GOOS: linux
-        GOARCH: arm64
-    volumes:
-      - ./output:/app/output
+  # jaeger-clickhouse-binaries:
+  #   build:
+  #     context: .
+  #     dockerfile: ./clickhouse/Dockerfile
+  #     args:
+  #       GOOS: linux
+  #       GOARCH: arm64
+  #   volumes:
+  #     - output:/app/output
   jaeger:
     image: jaegertracing/all-in-one:1.32.0
     container_name: jaeger
@@ -30,8 +32,8 @@ services:
     links:
       - clickhouse
     user: "501"
-    depends_on:
-      - build-binaries
+    # depends_on:
+    #   - build-binaries
   clickhouse:
     image: clickhouse/clickhouse-server:22
     container_name: some-clickhouse-server
