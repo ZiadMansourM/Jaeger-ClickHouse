@@ -1,7 +1,7 @@
 version: '3'
 
 services:
-  # jaeger-clickhouse-binaries:
+  # build-binaries:
   #   build:
   #     context: .
   #     dockerfile: ./clickhouse/Dockerfile
@@ -9,7 +9,7 @@ services:
   #       GOOS: linux
   #       GOARCH: arm64
   #   volumes:
-  #     - output:/app/output
+  #     - ./output:/app/output
   jaeger:
     image: jaegertracing/all-in-one:1.32.0
     container_name: jaeger
@@ -23,7 +23,7 @@ services:
       - JAEGER_DISABLED=false
       - SPAN_STORAGE_TYPE=grpc-plugin
     volumes:
-      - "./output:/data"
+      - "./data:/data"
     command: >
       --query.ui-config=/data/jaeger-ui.json
       --grpc-storage-plugin.binary=/data/jaeger-clickhouse-linux-arm64
@@ -38,8 +38,20 @@ services:
     image: clickhouse/clickhouse-server:22
     container_name: some-clickhouse-server
     ports:
-      - "9000:9000"
-    ulimits:
-      nofile:
-        soft: 262144
-        hard: 262144
+      - "9000:9000" # client-server communication
+      - "8123:8123" # HTTP interface
+    volumes:
+      - ./clickhouse-volumes/data:/var/lib/clickhouse
+      - ./clickhouse-volumes/logs:/var/log/clickhouse-server
+      # - ./clickhouse-volumes/conf:/etc/clickhouse-server
+      # - ./clickhouse-volumes/initdb-scripts:/docker-entrypoint-initdb.d/
+  hotrod:
+    image: jaegertracing/example-hotrod:1.32.0
+    environment:
+      JAEGER_AGENT_HOST: jaeger
+      JAEGER_AGENT_PORT: 6831
+    ports:
+      - "8080:8080"
+    depends_on:
+      - jaeger
+    command: all
