@@ -10,6 +10,15 @@ services:
   #       GOARCH: arm64
   #   volumes:
   #     - ./output:/app/output
+  clickhouse:
+    image: clickhouse/clickhouse-server:22
+    container_name: some-clickhouse-server
+    ports:
+      - "9000:9000" # client-server communication
+      - "8123:8123" # HTTP interface
+    volumes:
+      - ./clickhouse-volumes/data:/var/lib/clickhouse
+      - ./clickhouse-volumes/logs:/var/log/clickhouse-server
   jaeger:
     image: jaegertracing/all-in-one:1.32.0
     container_name: jaeger
@@ -34,17 +43,6 @@ services:
     user: "501"
     # depends_on:
     #   - build-binaries
-  clickhouse:
-    image: clickhouse/clickhouse-server:22
-    container_name: some-clickhouse-server
-    ports:
-      - "9000:9000" # client-server communication
-      - "8123:8123" # HTTP interface
-    volumes:
-      - ./clickhouse-volumes/data:/var/lib/clickhouse
-      - ./clickhouse-volumes/logs:/var/log/clickhouse-server
-      # - ./clickhouse-volumes/conf:/etc/clickhouse-server
-      # - ./clickhouse-volumes/initdb-scripts:/docker-entrypoint-initdb.d/
   hotrod:
     image: jaegertracing/example-hotrod:1.32.0
     environment:
