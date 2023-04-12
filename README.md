@@ -1,4 +1,4 @@
-# 🔧 Configure Jaeger to use ClickHouse as storage backend:
+# 🔧 Configure Jaeger to use ClickHouse:
 - [🔗](https://github.com/jaegertracing/jaeger-clickhouse) Jaeger ClickHouse grpc-plugin repo.
 - [🔗](https://hub.docker.com/r/clickhouse/clickhouse-server/) ClickHouse DockerHub.
 - [🔗](https://jvns.ca/blog/2021/11/17/debugging-a-weird--file-not-found--error/) Debugging a weird "file not found" error. 🚨 MUST READ 🚨
