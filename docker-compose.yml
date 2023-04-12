@@ -4,14 +4,13 @@ services:
   clickhouse:
     image: clickhouse/clickhouse-server:22
     container_name: default-clickhouse-server
-    # ports:
-    #   - "9000:9000" # client-server communication
-    #   - "8123:8123" # HTTP interface
+    ports:
+      - "9000:9000" # client-server communication
+      - "8123:8123" # HTTP interface
     volumes:
       - ./clickhouse/data:/var/lib/clickhouse
       - ./clickhouse/logs:/var/log/clickhouse-server
   jaeger:
-    # image: jaegertracing/all-in-one:1.32.0
     build:
       context: jaeger
     container_name: jaeger
@@ -24,8 +23,6 @@ services:
     environment:
       - JAEGER_DISABLED=false
       - SPAN_STORAGE_TYPE=grpc-plugin
-    # volumes:
-    #   - "./data:/data"
     command: >
       --query.ui-config=/data/jaeger-ui.json
       --grpc-storage-plugin.binary=/data/jaeger-clickhouse-linux-amd64
