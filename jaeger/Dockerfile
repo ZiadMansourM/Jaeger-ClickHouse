@@ -7,6 +7,7 @@ RUN mkdir -p /jaeger-binaries \
 
 WORKDIR /jaeger-binaries/jaeger-clickhouse/cmd/jaeger-clickhouse
 
+# "Must to read" https://jvns.ca/blog/2021/11/17/debugging-a-weird--file-not-found--error/
 RUN mkdir /output \
     && go mod download github.com/ClickHouse/clickhouse-go \
     && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /output/jaeger-clickhouse-linux-amd64 main.go
