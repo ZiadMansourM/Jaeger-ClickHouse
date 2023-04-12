@@ -3,32 +3,32 @@
 - [🔗](https://hub.docker.com/r/clickhouse/clickhouse-server/) ClickHouse DockerHub.
 
 # 📝 Structure - [working-example](https://github.com/ZiadMansourM/jaeger/tree/main/clickhouse)
-We have 3 directories:
-- clickhouse-volumes: for ClickHouse DB volumes.
-- clickhouse-plugin: contains go code for graph-plugin that needs to be built.
-- data: contains the required binaries and files for jaeger to work with ClickHouse.
+We have 2 directories:
+- clickhouse: for ClickHouse DB volumes.
+- jaeger: contains Dockerfile used to build jaeger-clickhouse binaries. And required files to work with ClickHouse.
 
 ### > Example structure
 ```console
-ziadh@Ziads-MacBook-Air clickhouse % tree -I clickhouse-volumes
+ziadh@Ziads-MacBook-Air jaeger % tree -I clickhouse 
 .
 ├── README.md
-├── clickhouse-plugin
-│   ├── Dockerfile
-│   ├── go.mod
-│   ├── go.sum
-│   ├── jaeger-clickhouse-darwin-arm64
-│   ├── jaeger-clickhouse-linux-arm64
-│   └── main.go
-├── data
-│   ├── config.yaml
-│   ├── jaeger-clickhouse-linux-arm64
-│   └── jaeger-ui.json
-└── docker-compose.yml
+├── docker-compose.yml
+└── jaeger
+    ├── Dockerfile
+    ├── config.yaml
+    └── jaeger-ui.json
 
-2 directories, 11 files
+1 directory, 5 files
 ```
 
+# 🔧 Get statrted
+```console
+ziadh@Ziads-MacBook-Air clickhouse-incorso % docker-compose build --no-cache --progress plain
+ziadh@Ziads-MacBook-Air clickhouse-incorso % docker-compose up -d
+ziadh@Ziads-MacBook-Air clickhouse-incorso % docker-compose ps 
+```
+
+# ➕ Extra Details
 ### > Build binaries - [ref](https://www.digitalocean.com/community/tutorials/how-to-build-go-executables-for-multiple-platforms-on-ubuntu-16-04)
 In order to build binaries you need to run one of those commands as per your convenience.
 ```console
@@ -45,26 +45,18 @@ $ GOOS=darwin GOARCH=arm64 go build -o jaeger-clickhouse-darwin-arm64 main.go
 version: '3'
 
 services:
-  # build-binaries:
-  #   build:
-  #     context: .
-  #     dockerfile: ./clickhouse/Dockerfile
-  #     args:
-  #       GOOS: linux
-  #       GOARCH: arm64
-  #   volumes:
-  #     - ./output:/app/output
   clickhouse:
     image: clickhouse/clickhouse-server:22
-    container_name: some-clickhouse-server
+    container_name: default-clickhouse-server
     ports:
       - "9000:9000" # client-server communication
       - "8123:8123" # HTTP interface
     volumes:
-      - ./clickhouse-volumes/data:/var/lib/clickhouse
-      - ./clickhouse-volumes/logs:/var/log/clickhouse-server
+      - ./clickhouse/data:/var/lib/clickhouse
+      - ./clickhouse/logs:/var/log/clickhouse-server
   jaeger:
-    image: jaegertracing/all-in-one:1.32.0
+    build:
+      context: jaeger
     container_name: jaeger
     restart: always
     ports:
@@ -75,18 +67,14 @@ services:
     environment:
       - JAEGER_DISABLED=false
       - SPAN_STORAGE_TYPE=grpc-plugin
-    volumes:
-      - "./data:/data"
     command: >
       --query.ui-config=/data/jaeger-ui.json
-      --grpc-storage-plugin.binary=/data/jaeger-clickhouse-linux-arm64
+      --grpc-storage-plugin.binary=/data/jaeger-clickhouse-linux-amd64
       --grpc-storage-plugin.configuration-file=/data/config.yaml
       --grpc-storage-plugin.log-level=debug
     links:
       - clickhouse
     user: "501"
-    # depends_on:
-    #   - build-binaries
   hotrod:
     image: jaegertracing/example-hotrod:1.32.0
     environment:
@@ -100,21 +88,27 @@ services:
 ```
 
 ```Dockerfile
-FROM golang:1.20-alpine
+# First stage: Build the Go binary https://hub.docker.com/layers/library/golang/1.20.2/images/sha256-2101aa981e68ab1e06e3d4ac35ae75ed122f0380e5331e3ae4ba7e811bf9d256?context=explore
+FROM golang:1.20.2@sha256:2101aa981e68ab1e06e3d4ac35ae75ed122f0380e5331e3ae4ba7e811bf9d256 AS builder
 
-VOLUME /app/output
-WORKDIR /app/output
+RUN mkdir -p /jaeger-binaries \
+    && cd /jaeger-binaries \
+    && git clone https://github.com/jaegertracing/jaeger-clickhouse.git
 
-COPY ./clickhouse/go.mod .
-COPY ./clickhouse/go.sum .
-RUN go mod download
-COPY ./clickhouse/main.go .
+WORKDIR /jaeger-binaries/jaeger-clickhouse/cmd/jaeger-clickhouse
 
-ARG GOOS
-ARG GOARCH
-RUN GOOS=${GOOS} GOARCH=${GOARCH} go build -o jaeger-clickhouse-file main.go
+RUN mkdir /output \
+    && go mod download github.com/ClickHouse/clickhouse-go \
+    && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /output/jaeger-clickhouse-linux-amd64 main.go
 
-RUN touch myfile.txt
+# Second stage: Create the final image and copy the binary https://hub.docker.com/layers/jaegertracing/all-in-one/1.32.0/images/sha256-a996be69abb23980ea090f381e0f9b1d429d32d043d6ac18c5759dead6680158?context=explore
+FROM jaegertracing/all-in-one:1.32.0@sha256:a996be69abb23980ea090f381e0f9b1d429d32d043d6ac18c5759dead6680158
+
+COPY config.yaml /data/config.yaml
+COPY jaeger-ui.json /data/jaeger-ui.json
+COPY --from=builder /output/jaeger-clickhouse-linux-amd64 /data/jaeger-clickhouse-linux-amd64
+
+RUN files="$(ls -la /data)" && echo $files
 ```
 
 ### > grace-plugin for ClickHouse code - [ref](https://github.com/jaegertracing/jaeger-clickhouse#docker-database-example)
