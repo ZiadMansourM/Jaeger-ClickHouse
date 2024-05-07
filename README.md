@@ -1,7 +1,11 @@
 # 🔧 Configure Jaeger to use ClickHouse:
 - [🔗](https://github.com/jaegertracing/jaeger-clickhouse) Jaeger ClickHouse grpc-plugin repo.
 - [🔗](https://hub.docker.com/r/clickhouse/clickhouse-server/) ClickHouse DockerHub.
-- [🔗](https://jvns.ca/blog/2021/11/17/debugging-a-weird--file-not-found--error/) Debugging a weird "file not found" error. 🚨 MUST READ 🚨
+
+> [!WARNING]
+> Debugging a weird `file not found` error:
+> 
+> Good read by Julia Evans - [here](https://jvns.ca/blog/2021/11/17/debugging-a-weird--file-not-found--error/).
 
 # 📝 Structure - [working-example](https://github.com/ZiadMansourM/jaeger/tree/main/clickhouse)
 We have 2 directories:
